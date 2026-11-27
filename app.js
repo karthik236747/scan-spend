@@ -1129,3 +1129,314 @@ function init() {
 }
 
 init();
+
+
+
+/* ==========================================
+   SCANSPEND – PRODUCT STICKER OCR UPGRADE
+   Append this block at the END of app.js
+========================================== */
+
+let scanSpendOCRData = null;
+
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) {
+      resolve(window.Tesseract);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src =
+      'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+
+    script.onload = () => resolve(window.Tesseract);
+    script.onerror = () => reject(
+      new Error('Could not load OCR engine')
+    );
+
+    document.head.appendChild(script);
+  });
+}
+
+function showStickerOCR(code, initialData = {}) {
+  const modal = document.getElementById('modal-scanner');
+  const reader = document.getElementById('reader');
+
+  reader.style.display = 'none';
+
+  let panel = document.getElementById('scanspend-ocr-panel');
+
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'scanspend-ocr-panel';
+    panel.style.cssText =
+      'padding:20px;text-align:center;color:inherit;';
+
+    reader.parentNode.appendChild(panel);
+  }
+
+  scanSpendOCRData = {
+    code,
+    name: initialData.name || '',
+    amount: initialData.amount ?? null,
+    weight: '',
+    unitPrice: ''
+  };
+
+  panel.innerHTML = `
+    <h3 style="margin-bottom:8px">Product Sticker Scanner</h3>
+
+    <p style="font-size:14px;margin-bottom:16px">
+      Take a clear photo of the product label.
+      ScanSpend will read the name, weight and price.
+    </p>
+
+    <label style="
+      display:block;
+      padding:16px;
+      border:2px dashed #10b981;
+      border-radius:14px;
+      cursor:pointer;
+      margin-bottom:14px;
+    ">
+      <div style="font-size:32px">📷</div>
+      <strong>Take Product Label Photo</strong>
+      <input
+        id="scanspend-ocr-file"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style="display:block;width:100%;margin-top:12px"
+      >
+    </label>
+
+    <p id="scanspend-ocr-status"
+       style="font-size:13px;margin:12px 0">
+      Barcode: ${escapeHtml(code)}
+    </p>
+
+    <button id="scanspend-ocr-skip"
+      type="button"
+      style="
+        width:100%;
+        padding:13px;
+        border:0;
+        border-radius:10px;
+        background:#64748b;
+        color:white;
+        font-weight:600;
+      ">
+      Skip Photo – Enter Details Manually
+    </button>
+  `;
+
+  panel.style.display = 'block';
+
+  document.getElementById('scanspend-ocr-file')
+    .addEventListener('change', async function () {
+      const file = this.files?.[0];
+      if (!file) return;
+
+      const status =
+        document.getElementById('scanspend-ocr-status');
+
+      status.textContent = 'Loading OCR engine…';
+
+      try {
+        const Tesseract = await loadTesseract();
+
+        status.textContent = 'Reading product sticker…';
+
+        const result = await Tesseract.recognize(
+          file,
+          'eng',
+          {
+            logger: message => {
+              if (message.status === 'recognizing text') {
+                status.textContent =
+                  'Reading sticker: ' +
+                  Math.round(message.progress * 100) + '%';
+              }
+            }
+          }
+        );
+
+        const text = result.data.text || '';
+
+        const extracted = parseProductSticker(text);
+
+        scanSpendOCRData.name =
+          extracted.name || scanSpendOCRData.name;
+
+        scanSpendOCRData.amount =
+          extracted.total ?? scanSpendOCRData.amount;
+
+        scanSpendOCRData.weight = extracted.weight;
+        scanSpendOCRData.unitPrice = extracted.unitPrice;
+
+        status.textContent = 'Sticker read successfully!';
+
+        setTimeout(() => finishStickerOCR(), 500);
+
+      } catch (error) {
+        console.error('OCR error:', error);
+        status.textContent =
+          'Could not read the sticker. Please enter details manually.';
+      }
+    });
+
+  document.getElementById('scanspend-ocr-skip')
+    .addEventListener('click', finishStickerOCR);
+}
+
+function parseProductSticker(text) {
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const normalized = text
+    .replace(/,/g, '.')
+    .replace(/\s+/g, ' ');
+
+  function findAmount(pattern) {
+    const match = normalized.match(pattern);
+    if (!match) return null;
+
+    const value = parseFloat(match[1]);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const weightMatch = normalized.match(
+    /(?:WEIGHT|NET\s*WT|NET\s*WEIGHT)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(KG|G)\b/i
+  );
+
+  const unitMatch = normalized.match(
+    /(?:UNIT\s*PRICE|PRICE)\s*[:\-]?\s*(?:OMR|RO|RIALS?)?\s*(\d+\.\d{1,3})\s*(?:\/\s*(KG|KILO|100G|G))?/i
+  );
+
+  const total =
+    findAmount(/(?:TOTAL|AMOUNT|SELLING\s*PRICE)\s*[:\-]?\s*(?:OMR|RO|RIALS?)?\s*(\d+\.\d{1,3})/i) ??
+    findAmount(/(?:OMR|RO)\s*(\d+\.\d{1,3})(?!\d)/i);
+
+  let weight = '';
+
+  if (weightMatch) {
+    weight = weightMatch[1] + ' ' + weightMatch[2].toLowerCase();
+  }
+
+  const unitPrice = unitMatch
+    ? unitMatch[1] + (unitMatch[2] ? '/' + unitMatch[2].toLowerCase() : '')
+    : '';
+
+  let name = '';
+
+  // Prefer a clear product-name line.
+  for (const line of lines) {
+    const candidate = line.trim();
+
+    if (
+      /[a-z]{3,}/i.test(candidate) &&
+      !/K\.?M\.?\s*TRADING/i.test(candidate) &&
+      !/BARCODE|EAN|TOTAL|PRICE|WEIGHT|DATE|OMR|KG|RIAL/i.test(candidate) &&
+      !/^\d+$/.test(candidate)
+    ) {
+      name = candidate;
+      break;
+    }
+  }
+
+  return {
+    name,
+    weight,
+    unitPrice,
+    total
+  };
+}
+
+function finishStickerOCR() {
+  if (!scanSpendOCRData) return;
+
+  const data = scanSpendOCRData;
+
+  const noteParts = [];
+
+  if (data.weight) {
+    noteParts.push('Weight: ' + data.weight);
+  }
+
+  if (data.unitPrice) {
+    noteParts.push('Unit price: OMR ' + data.unitPrice);
+  }
+
+  // Restore the scanner display for the next scan.
+  const reader = document.getElementById('reader');
+  reader.style.display = '';
+
+  const panel = document.getElementById('scanspend-ocr-panel');
+
+  if (panel) panel.style.display = 'none';
+
+  document.getElementById('modal-scanner')
+    .classList.add('hidden');
+
+  const prefill = {
+    name: data.name || '',
+    categoryId: getGroceriesCategory()?.id,
+    note: noteParts.join(' | ')
+  };
+
+  if (data.amount !== null && data.amount !== undefined) {
+    prefill.amount = data.amount;
+  }
+
+  openExpenseModal(null, prefill);
+
+  pendingScannedCode = data.code;
+
+  scanSpendOCRData = null;
+}
+
+// Replace the original barcode success handler.
+// This runs after the rest of app.js has loaded.
+onScanSuccess = async function (decodedText) {
+  await stopScanner();
+
+  const scanned = parseQrPayload(decodedText);
+  const code = scanned.code;
+
+  if (!code) {
+    closeModal('modal-scanner');
+    showToast('Could not read barcode');
+    return;
+  }
+
+  const saved = findSavedProduct(code);
+
+  if (saved) {
+    document.getElementById('modal-scanner')
+      .classList.add('hidden');
+
+    const reader = document.getElementById('reader');
+    reader.style.display = '';
+
+    const panel = document.getElementById('scanspend-ocr-panel');
+    if (panel) panel.style.display = 'none';
+
+    pendingScannedCode = code;
+
+    openExpenseModal(null, {
+      name: saved.name,
+      amount: saved.lastPrice || '',
+      categoryId: saved.categoryId
+    });
+
+    showToast('Saved product recognised!');
+    return;
+  }
+
+  showStickerOCR(code, scanned);
+};
+
+console.log('ScanSpend sticker OCR upgrade loaded');
