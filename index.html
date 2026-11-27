@@ -1,130 +1,233 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <meta name="theme-color" content="#087c50" />
+  <meta name="description" content="ScanSpend - Smart personal expense tracker for everyday shopping." />
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>ScanSpend – Expense Tracker</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <title>ScanSpend – Smart Expense Tracker</title>
+
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Barcode and QR scanning -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <!-- Excel export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
+
 <body>
   <div id="app">
-    <!-- Header -->
+
+    <!-- HEADER -->
     <header class="header">
       <h1 id="page-title">ScanSpend</h1>
-      <button id="btn-categories" class="icon-btn" title="Manage Categories">📁</button>
+      <button id="btn-categories" class="icon-btn" title="Manage Categories" aria-label="Manage Categories">
+        📁
+      </button>
     </header>
 
-    <!-- Dashboard View -->
+    <!-- DASHBOARD -->
     <main id="view-dashboard" class="view active">
+
       <section class="summary-card">
-        <div class="summary-label">This Month</div>
-        <div class="summary-amount" id="month-total">$0.00</div>
-        <div class="summary-sub" id="month-count">0 expenses</div>
+        <div class="summary-label">Monthly Spending</div>
+        <div class="summary-amount" id="month-total">OMR 0.000</div>
+        <div class="summary-sub" id="month-count">0 expenses this month</div>
       </section>
 
+      <!-- QUICK ACTIONS -->
       <div class="quick-actions">
+
         <button id="btn-scan" class="primary-btn big">
           <span class="btn-icon">📷</span>
-          Scan Barcode
+          Smart Scan
         </button>
+
         <button id="btn-manual" class="secondary-btn">
-          + Manual Entry
+          ＋ Manual Expense Entry
         </button>
+
       </div>
 
+      <!-- RECENT EXPENSES -->
       <section class="recent-section">
+
         <div class="section-header">
-          <h2>Recent</h2>
-          <button id="btn-view-all" class="text-btn">View all</button>
+          <h2>Recent Transactions</h2>
+          <button id="btn-view-all" class="text-btn">
+            View all →
+          </button>
         </div>
+
         <div id="recent-list" class="expense-list"></div>
+
       </section>
     </main>
 
-    <!-- History View -->
+    <!-- HISTORY -->
     <main id="view-history" class="view">
+
+      <div class="section-header">
+        <h2>Expense History</h2>
+      </div>
+
       <div class="filter-bar">
+
         <select id="filter-category">
           <option value="all">All Categories</option>
         </select>
+
         <button id="btn-export-excel" class="secondary-btn export-btn">
           📥 Download Excel
         </button>
+
       </div>
+
       <div id="history-list" class="expense-list"></div>
+
     </main>
 
-    <!-- Categories View -->
+    <!-- CATEGORIES -->
     <main id="view-categories" class="view">
+
       <div class="section-header">
-        <h2>Categories</h2>
-        <button id="btn-add-category" class="primary-btn small">+ Add</button>
+        <h2>My Categories</h2>
+
+        <button id="btn-add-category" class="primary-btn small">
+          ＋ Add
+        </button>
       </div>
+
       <div id="categories-list" class="categories-list"></div>
+
     </main>
 
-    <!-- Add / Edit Expense Modal -->
+    <!-- ADD / EDIT EXPENSE -->
     <div id="modal-expense" class="modal hidden">
+
       <div class="modal-content">
+
         <div class="modal-header">
           <h2 id="expense-modal-title">Add Expense</h2>
-          <button class="close-btn" data-close="modal-expense">×</button>
+
+          <button class="close-btn" data-close="modal-expense" aria-label="Close">
+            ×
+          </button>
         </div>
+
         <form id="form-expense">
+
           <input type="hidden" id="expense-id" />
+
           <div class="form-group">
-            <label>Name / Product</label>
-            <input type="text" id="expense-name" placeholder="e.g. Milk, Electricity bill" required />
+            <label for="expense-name">Product / Expense Name</label>
+            <input
+              type="text"
+              id="expense-name"
+              placeholder="e.g. Milk, Watermelon, Electricity"
+              required
+            />
           </div>
+
           <div class="form-group">
-            <label>Amount</label>
+            <label for="expense-amount">Amount</label>
+
             <div class="amount-input">
-              <span class="currency">$</span>
-              <input type="number" id="expense-amount" step="0.01" min="0" placeholder="0.00" required />
+              <span class="currency">OMR</span>
+
+              <input
+                type="number"
+                id="expense-amount"
+                step="0.001"
+                min="0"
+                placeholder="0.000"
+                required
+              />
             </div>
           </div>
+
           <div class="form-group">
-            <label>Category</label>
+            <label for="expense-category">Category</label>
             <select id="expense-category" required></select>
           </div>
+
           <div class="form-group">
-            <label>Date</label>
+            <label for="expense-date">Purchase Date</label>
             <input type="date" id="expense-date" required />
           </div>
+
           <div class="form-group">
-            <label>Note (optional)</label>
-            <input type="text" id="expense-note" placeholder="Store, quantity…" />
+            <label for="expense-note">Notes (Optional)</label>
+            <input
+              type="text"
+              id="expense-note"
+              placeholder="Shop, quantity, barcode..."
+            />
           </div>
+
           <div class="form-actions">
-            <button type="button" class="secondary-btn" data-close="modal-expense">Cancel</button>
-            <button type="submit" class="primary-btn">Save</button>
+
+            <button
+              type="button"
+              class="secondary-btn"
+              data-close="modal-expense"
+            >
+              Cancel
+            </button>
+
+            <button type="submit" class="primary-btn">
+              Save Expense
+            </button>
+
           </div>
+
         </form>
       </div>
     </div>
 
-    <!-- Category Modal (Add / Edit) -->
+    <!-- CATEGORY MODAL -->
     <div id="modal-category" class="modal hidden">
+
       <div class="modal-content">
+
         <div class="modal-header">
           <h2 id="category-modal-title">Add Category</h2>
-          <button class="close-btn" data-close="modal-category">×</button>
+
+          <button class="close-btn" data-close="modal-category">
+            ×
+          </button>
         </div>
+
         <form id="form-category">
+
           <input type="hidden" id="category-id" />
+
           <div class="form-group">
-            <label>Category Name</label>
-            <input type="text" id="category-name" placeholder="e.g. Groceries, Rent, Transport" required maxlength="30" />
+            <label for="category-name">Category Name</label>
+
+            <input
+              type="text"
+              id="category-name"
+              placeholder="e.g. Groceries, Transport, Rent"
+              required
+              maxlength="30"
+            />
           </div>
+
           <div class="form-group">
-            <label>Color</label>
+
+            <label>Choose Color</label>
+
             <div class="color-picker" id="color-picker">
+
               <button type="button" class="color-swatch" data-color="#22c55e" style="background:#22c55e"></button>
               <button type="button" class="color-swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
               <button type="button" class="color-swatch" data-color="#f59e0b" style="background:#f59e0b"></button>
@@ -133,47 +236,86 @@
               <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899"></button>
               <button type="button" class="color-swatch" data-color="#06b6d4" style="background:#06b6d4"></button>
               <button type="button" class="color-swatch" data-color="#64748b" style="background:#64748b"></button>
+
             </div>
+
             <input type="hidden" id="category-color" value="#22c55e" />
+
           </div>
+
           <div class="form-actions">
-            <button type="button" class="secondary-btn" data-close="modal-category">Cancel</button>
-            <button type="submit" class="primary-btn">Save</button>
+
+            <button type="button" class="secondary-btn" data-close="modal-category">
+              Cancel
+            </button>
+
+            <button type="submit" class="primary-btn">
+              Save Category
+            </button>
+
           </div>
+
         </form>
       </div>
     </div>
 
-    <!-- Scanner Modal -->
+    <!-- SMART SCANNER MODAL -->
     <div id="modal-scanner" class="modal hidden">
+
       <div class="modal-content scanner-content">
+
         <div class="modal-header">
-          <h2>Scan Barcode</h2>
-          <button class="close-btn" data-close="modal-scanner">×</button>
+
+          <h2>Smart Product Scanner</h2>
+
+          <button
+            class="close-btn"
+            data-close="modal-scanner"
+            aria-label="Close scanner"
+          >
+            ×
+          </button>
+
         </div>
+
         <div id="reader"></div>
-        <p class="scanner-hint">Point your camera at a product barcode</p>
-        <button id="btn-stop-scan" class="secondary-btn">Cancel</button>
+
+        <p class="scanner-hint">
+          Point your camera at a product barcode or QR code.
+          Product-label OCR will help capture weight and printed prices.
+        </p>
+
+        <button id="btn-stop-scan" class="secondary-btn">
+          Cancel Scanning
+        </button>
+
       </div>
     </div>
 
-    <!-- Bottom Navigation -->
+    <!-- BOTTOM NAVIGATION -->
     <nav class="bottom-nav">
+
       <button class="nav-btn active" data-view="dashboard">
         <span>🏠</span>
         <small>Home</small>
       </button>
+
       <button class="nav-btn" data-view="history">
         <span>📋</span>
         <small>History</small>
       </button>
+
       <button class="nav-btn" data-view="categories">
         <span>📁</span>
         <small>Categories</small>
       </button>
+
     </nav>
+
   </div>
 
+  <!-- MAIN APPLICATION -->
   <script src="app.js"></script>
+
 </body>
 </html>
