@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>ScanSpend – Expense Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 id="page-title">ScanSpend</h1>
+      <button id="btn-categories" class="icon-btn" title="Manage Categories">📁</button>
+    </header>
+
+    <!-- Dashboard View -->
+    <main id="view-dashboard" class="view active">
+      <section class="summary-card">
+        <div class="summary-label">This Month</div>
+        <div class="summary-amount" id="month-total">$0.00</div>
+        <div class="summary-sub" id="month-count">0 expenses</div>
+      </section>
+
+      <div class="quick-actions">
+        <button id="btn-scan" class="primary-btn big">
+          <span class="btn-icon">📷</span>
+          Scan Barcode
+        </button>
+        <button id="btn-manual" class="secondary-btn">
+          + Manual Entry
+        </button>
+      </div>
+
+      <section class="recent-section">
+        <div class="section-header">
+          <h2>Recent</h2>
+          <button id="btn-view-all" class="text-btn">View all</button>
+        </div>
+        <div id="recent-list" class="expense-list"></div>
+      </section>
+    </main>
+
+    <!-- History View -->
+    <main id="view-history" class="view">
+      <div class="filter-bar">
+        <select id="filter-category">
+          <option value="all">All Categories</option>
+        </select>
+        <button id="btn-export-excel" class="secondary-btn export-btn">
+          📥 Download Excel
+        </button>
+      </div>
+      <div id="history-list" class="expense-list"></div>
+    </main>
+
+    <!-- Categories View -->
+    <main id="view-categories" class="view">
+      <div class="section-header">
+        <h2>Categories</h2>
+        <button id="btn-add-category" class="primary-btn small">+ Add</button>
+      </div>
+      <div id="categories-list" class="categories-list"></div>
+    </main>
+
+    <!-- Add / Edit Expense Modal -->
+    <div id="modal-expense" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="expense-modal-title">Add Expense</h2>
+          <button class="close-btn" data-close="modal-expense">×</button>
+        </div>
+        <form id="form-expense">
+          <input type="hidden" id="expense-id" />
+          <div class="form-group">
+            <label>Name / Product</label>
+            <input type="text" id="expense-name" placeholder="e.g. Milk, Electricity bill" required />
+          </div>
+          <div class="form-group">
+            <label>Amount</label>
+            <div class="amount-input">
+              <span class="currency">$</span>
+              <input type="number" id="expense-amount" step="0.01" min="0" placeholder="0.00" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="expense-category" required></select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="expense-date" required />
+          </div>
+          <div class="form-group">
+            <label>Note (optional)</label>
+            <input type="text" id="expense-note" placeholder="Store, quantity…" />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" data-close="modal-expense">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Category Modal (Add / Edit) -->
+    <div id="modal-category" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="category-modal-title">Add Category</h2>
+          <button class="close-btn" data-close="modal-category">×</button>
+        </div>
+        <form id="form-category">
+          <input type="hidden" id="category-id" />
+          <div class="form-group">
+            <label>Category Name</label>
+            <input type="text" id="category-name" placeholder="e.g. Groceries, Rent, Transport" required maxlength="30" />
+          </div>
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-picker" id="color-picker">
+              <button type="button" class="color-swatch" data-color="#22c55e" style="background:#22c55e"></button>
+              <button type="button" class="color-swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
+              <button type="button" class="color-swatch" data-color="#f59e0b" style="background:#f59e0b"></button>
+              <button type="button" class="color-swatch" data-color="#ef4444" style="background:#ef4444"></button>
+              <button type="button" class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6"></button>
+              <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899"></button>
+              <button type="button" class="color-swatch" data-color="#06b6d4" style="background:#06b6d4"></button>
+              <button type="button" class="color-swatch" data-color="#64748b" style="background:#64748b"></button>
+            </div>
+            <input type="hidden" id="category-color" value="#22c55e" />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" data-close="modal-category">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="modal-scanner" class="modal hidden">
+      <div class="modal-content scanner-content">
+        <div class="modal-header">
+          <h2>Scan Barcode</h2>
+          <button class="close-btn" data-close="modal-scanner">×</button>
+        </div>
+        <div id="reader"></div>
+        <p class="scanner-hint">Point your camera at a product barcode</p>
+        <button id="btn-stop-scan" class="secondary-btn">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="dashboard">
+        <span>🏠</span>
+        <small>Home</small>
+      </button>
+      <button class="nav-btn" data-view="history">
+        <span>📋</span>
+        <small>History</small>
+      </button>
+      <button class="nav-btn" data-view="categories">
+        <span>📁</span>
+        <small>Categories</small>
+      </button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
